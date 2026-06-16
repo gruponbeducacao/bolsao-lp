@@ -980,6 +980,12 @@ var timer = setInterval(updateCountdown, 1000);
 /* ===== INSCRIÇÃO — endpoint unificado (mesmo do site/email-capture). Apps Script roteia por 'origem'. ===== */
 var SHEET_URL = 'https://script.google.com/macros/s/AKfycbx8lWrX5F0IByv0JEJ0iBGPjtLto7f2VxDHIh0uT0gZtvoj8EDVx0NFiriou-Dt0cxh/exec';
 
+/* Normaliza o WhatsApp: tira não-dígitos e remove o +55 do país quando o autofill o
+   injeta (>11 dígitos começando com 55), pra nunca perder os 2 últimos dígitos.
+   Mesmo padrão homologado em lives.html / cursos.html / dicionario-v2. */
+function onlyDigits(s){var d=(s||'').replace(/\D+/g,'');if(d.length>11&&d.slice(0,2)==='55')d=d.slice(2);return d;}
+function formatWpp(d){d=(d||'').slice(0,11);if(d.length<=2)return d;if(d.length<=6)return '('+d.slice(0,2)+') '+d.slice(2);if(d.length<=10)return '('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6);return '('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7);}
+
 function submitBolsao() {
   var nome  = document.getElementById('fcNome').value.trim();
   var email = document.getElementById('fcEmail').value.trim();
@@ -987,7 +993,7 @@ function submitBolsao() {
 
   if (!nome)  { alert('Por favor, preencha seu nome.'); return; }
   if (!/\S+@\S+\.\S+/.test(email)) { alert('Por favor, informe um e-mail válido.'); return; }
-  var wppDigits = wpp.replace(/\D/g, '');
+  var wppDigits = onlyDigits(wpp);
   if (wppDigits && wppDigits.length < 10) { alert('Confira seu WhatsApp com DDD.'); return; }
 
   var btn = document.getElementById('fcBtn');
@@ -997,7 +1003,7 @@ function submitBolsao() {
   var data = new URLSearchParams();
   data.append('nome', nome);
   data.append('email', email);
-  data.append('whatsapp', wpp);
+  data.append('whatsapp', formatWpp(wppDigits));
   data.append('origem', 'bolsao_lp');
 
   // Contexto pra CRM / atribuição de tráfego (a variante Copa é distinguível pelo campo 'pagina')
@@ -1026,13 +1032,9 @@ document.getElementById('fcForm').addEventListener('submit', function (e) {
   submitBolsao();
 });
 
-/* ===== MÁSCARA DE WHATSAPP ===== */
+/* ===== MÁSCARA DE WHATSAPP (normaliza e remove o +55 do autofill) ===== */
 document.getElementById('fcWpp').addEventListener('input', function (e) {
-  var v = e.target.value.replace(/\D/g, '').slice(0, 11);
-  if (v.length > 6)      v = '(' + v.slice(0,2) + ') ' + v.slice(2,7) + '-' + v.slice(7);
-  else if (v.length > 2) v = '(' + v.slice(0,2) + ') ' + v.slice(2);
-  else if (v.length > 0) v = '(' + v;
-  e.target.value = v;
+  e.target.value = formatWpp(onlyDigits(e.target.value));
 });
 
 /* ===== FAQ ACCORDION (acessível: aria-expanded + aria-controls) ===== */
